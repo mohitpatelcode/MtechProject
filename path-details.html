@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Full Path Details (5 Day Forecast)</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f3e5f5;
+      padding: 20px;
+      color: #4a148c;
+    }
+    h1 {
+      text-align: center;
+      color: #6a1b9a;
+    }
+    table {
+      width: 90%;
+      margin: 20px auto;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    th, td {
+      padding: 12px 15px;
+      text-align: center;
+      border-bottom: 1px solid #ddd;
+    }
+    th {
+      background-color: #ba68c8;
+      color: white;
+    }
+    tr:nth-child(even) {
+      background-color: #f3e5f5;
+    }
+    tr:hover {
+      background-color: #e1bee7;
+    }
+  </style>
+</head>
+<body>
+  <h1>5-Day Route Weather Forecast</h1>
+  <div id="forecastTables"></div>
+
+  <script>
+    const WEATHER_API_KEY = "dc666b608520da41696ca26ebfb51dc4";
+    const BACKEND_URL = "http://localhost:5000/predict_soc";
+
+    const weatherIcons = {
+      "01d": "☀️", "01n": "🌙", "02d": "⛅", "03d": "☁️", "04d": "☁️",
+      "09d": "🌧️", "10d": "🌦️", "11d": "⛈️", "13d": "❄️", "50d": "🌫️"
+    };
+
+    function getWeatherDisplay(weather) {
+      if (!weather) return "❓ N/A";
+      const icon = weatherIcons[weather.icon] || "🌐";
+      return `${icon} ${weather.temp}°C ${weather.description}`;
+    }
+
+    async function fetchForecast(city) {
+      const res = await fetch(`https://api.openweathermap.org/data/2.5/forecast?q=${city}&units=metric&appid=${WEATHER_API_KEY}`);
+      const data = await res.json();
+      return data.list;
+    }
+
+    function findClosestForecast(forecasts, etaDateTime) {
+      let closest = null;
+      let minDiff = Infinity;
+      for (const forecast of forecasts) {
+        const forecastTime = new Date(forecast.dt_txt);
+        const diff = Math.abs(forecastTime - etaDateTime);
+        if (diff < minDiff) {
+          closest = forecast;
+          minDiff = diff;
+        }
+      }
+      return closest;
+    }
+
+    async function predictDOD(velocity, temperature, weatherStr, distance) {
+      try {
+        const response = await fetch(BACKEND_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ velocity, temperature, weather: weatherStr, distance })
+        });
+        const result = await response.json();
+        return result.soc || 0;
+      } catch (err) {
+        console.error("Error calling backend:", err);
+        return 0;
+      }
+    }
+
+    async function loadForecastWithETA() {
+      const pathData = JSON.parse(localStorage.getItem("selectedPath"));
+      if (!pathData) return;
+
+      const velocity = pathData.velocity;
+      const cities = pathData.path;
+      const distances = pathData.distances;
+
+      const cityForecasts = {};
+      for (const city of new Set(cities)) {
+        try {
+          cityForecasts[city] = await fetchForecast(city);
+        } catch (err) {
+          console.error(`Failed forecast for ${city}`, err);
+        }
+      }
+
+      const startTime = new Date();
+      let cumulativeHours = 0;
+      const container = document.getElementById("forecastTables");
+      let html = `<p><strong>Speed:</strong> ${velocity} km/h</p>`;
+
+      for (let day = 0; day < 5; day++) {
+        let dailyTotalDOD = 0;
+        html += `<h2>Day ${day + 1}</h2>`;
+        html += `<table><tr>
+          <th>From</th><th>To</th><th>Distance</th>
+          <th>Time Required</th>
+          <th>Forecasted Weather</th><th>DOD (SOC %)</th>
+        </tr>`;
+
+        for (let i = 0; i < cities.length - 1; i++) {
+          const from = cities[i];
+          const to = cities[i + 1];
+          const dist = distances[i];
+
+          const timeRequired = dist / velocity;
+          cumulativeHours += timeRequired;
+
+          const eta = new Date(startTime.getTime() + cumulativeHours * 60 * 60 * 1000);
+          const forecast = findClosestForecast(cityForecasts[from], eta);
+
+          const temp = Math.round(forecast?.main.temp);
+          const weatherStr = forecast?.weather[0].main.toLowerCase();
+
+          const dod = await predictDOD(velocity, temp, weatherStr, dist);
+          dailyTotalDOD += dod;
+
+          html += `<tr>
+            <td>${from}</td>
+            <td>${to}</td>
+            <td>${dist} km</td>
+            <td>${timeRequired.toFixed(2)} hrs</td>
+            <td>${getWeatherDisplay({
+              temp: temp,
+              description: forecast?.weather[0].main,
+              icon: forecast?.weather[0].icon
+            })}</td>
+            <td>${dod.toFixed(2)} %</td>
+          </tr>`;
+        }
+
+        html += `<tr style="font-weight:bold; background-color:#e1bee7;">
+          <td colspan="5" style="text-align:right;">Total DOD:</td>
+          <td>${dailyTotalDOD.toFixed(2)} %</td>
+        </tr>`;
+        html += `</table>`;
+      }
+
+      container.innerHTML = html;
+    }
+
+    window.onload = loadForecastWithETA;
+  </script>
+</body>
+</html>

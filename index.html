@@ -1,0 +1,2077 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>City Path Finder</title>
+
+    <style>
+      body {
+        font-family: 'Segoe UI', sans-serif;
+        margin: 0;
+        padding: 30px;
+        background: linear-gradient(to right, #e0f7fa, #e1bee7);
+        color: #333;
+        animation: fadeIn 1s ease-in-out;
+      }
+    
+      h1 {
+        text-align: center;
+        font-size: 2.5rem;
+        color: #4a148c;
+        margin-bottom: 30px;
+      }
+    
+      div {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+    
+      label {
+        margin: 0 10px;
+        font-weight: bold;
+        color: #6a1b9a;
+      }
+    
+      input[type="text"],
+      input[type="number"] {
+        padding: 8px 12px;
+        border: 2px solid #ce93d8;
+        border-radius: 8px;
+        font-size: 16px;
+        margin: 0 5px;
+        background-color: #fff;
+      }
+    
+      button {
+        background-color: #8e24aa;
+        color: white;
+        padding: 10px 18px;
+        font-size: 16px;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin-left: 10px;
+      }
+    
+      button:hover {
+        background-color: #6a1b9a;
+        transform: scale(1.05);
+        box-shadow: 0 4px 15px rgba(106, 27, 154, 0.3);
+      }
+    
+      table {
+        width: 90%;
+        margin: 20px auto;
+        border-collapse: collapse;
+        background: white;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+    
+      th, td {
+        padding: 12px 15px;
+        text-align: center;
+        border-bottom: 1px solid #ddd;
+      }
+    
+      th {
+        background-color: #ba68c8;
+        color: white;
+      }
+    
+      tr:nth-child(even) {
+        background-color: #f3e5f5;
+      }
+    
+      tr:hover {
+        background-color: #e1bee7;
+      }
+    
+      h2, h3 {
+        text-align: center;
+        color: #4a148c;
+      }
+    
+      @keyframes fadeIn {
+        from {opacity: 0;}
+        to {opacity: 1;}
+      }
+    </style>
+  </head>
+  <body>
+    <h1>City Path Finder</h1>
+
+    <div>
+      <label for="city1">From City:</label>
+      <input type="text" id="city1" list="cities" />
+
+      <label for="city2">To City:</label>
+      <input type="text" id="city2" list="cities" />
+
+      <label for="speed">Your expected speed:</label>
+      <input type="number" id="speed" placeholder="Enter speed" />
+
+      <button onclick="findPaths().catch(console.error)">Find Paths</button>
+    </div>
+
+    <datalist id="cities">
+      <!-- Options will be populated by JavaScript -->
+    </datalist>
+
+    <div id="results"></div>
+
+    <script>
+      //gloabal variable add
+      let paths = []; // global bana rahe hain
+      let weatherData = {}; // global weather data bhi
+
+      // At the top of your script.js (after cityDistances)
+      const WEATHER_API_KEY = "dc666b608520da41696ca26ebfb51dc4"; // ← Paste your key here
+
+      // Add this ICON MAP (shows emoji instead of codes)
+      const weatherIcons = {
+        "01d": "☀️", // Clear sky (day)
+        "01n": "🌙", // Clear sky (night)
+        "02d": "⛅", // Few clouds
+        "03d": "☁️", // Scattered clouds
+        "04d": "☁️", // Broken clouds
+        "09d": "🌧️", // Shower rain
+        "10d": "🌦️", // Rain
+        "11d": "⛈️", // Thunderstorm
+        "13d": "❄️", // Snow
+        "50d": "🌫️", // Mist
+      };
+
+      // Your complete cityDistances object goes here
+      const cityDistances = {
+        // Include all your city data here...
+        // Example:
+        Indore: [
+      ["ujjain", 55],
+      ["dewas", 40],
+      ["Ratlam", 140],
+      ["Chhindwara", 408],
+      ["Amravati", 351],
+      ["Nagpur", 446],
+      ["Aurangabad", 449],
+      ["Nashik", 453],
+      ["Surat", 485],
+      ["Vadodara", 340],
+      ["Ahmedabad", 390]
+    ],
+    Bhopal: [
+      ["dewas", 153],
+      ["guna", 211],
+      ["kota", 344],
+      ["sagar", 170],
+      ["jabalpur", 312],
+      ["Chhindwara", 313],
+      ["Nagpur", 350],
+      ["Amravati", 313]
+    ],
+    Jabalpur: [
+      ["Bhopal", 312],
+      ["Sagar", 156],
+      ["Katni", 95],
+      ["Ambikapur", 416],
+      ["Korba", 397],
+      ["Bilaspur", 314],
+      ["Raipur", 342],
+      ["Durg", 334],
+      ["Rajnandgaon", 338],
+      ["nagpur", 272],
+      ["Chhindwara", 213]
+    ],
+        Gwalior: [
+          ["Agra", 120],
+          ["Kanpur", 266],
+          ["Satna", 374],
+          ["Katni", 422],
+          ["sagar", 305],
+          ["Bhopal", 428],
+          ["dewas", 463],
+          ["ujjain", 468],
+          ["ratlam", 555],
+          ["kota", 345],
+          ["jaipur", 325],
+          ["alwar", 253],
+          ["guna", 218]
+        ],
+        Ujjain: [
+          ["Indore", 55],
+          ["Gwalior", 468],
+          ["dewas", 40],
+          ["Ratlam", 106],
+          ["kota", 265],
+          ["Alwar", 583],
+          ["guna", 250]
+        ],
+        Dewas: [
+          ["Indore", 40],
+          ["Bhopal", 153],
+          ["Gwalior", 463],
+          ["Ujjain", 40],
+          ["guna", 245]
+        ],
+        Sagar: [
+          ["Bhopal", 169],
+          ["Jabalpur", 156],
+          ["Gwalior", 309],
+          ["katni", 185],
+          ["Chhindwara", 261],
+          ["guna", 212],
+          ["Kanpur", 430],
+          ["Satna", 267]
+        ],
+        Ratlam: [
+          ["Gandhinagar", 361],
+          ["Ahmedabad", 346],
+          ["Vadodara", 294],
+          ["Indore", 137],
+          ["Gwalior", 547],
+          ["Ujjain", 106],
+          ["kota", 268],
+          ["Udaipur", 239],
+          ["Bhilwara", 258]
+        ],
+        Satna: [
+          ["Gwalior", 373],
+          ["Sagar", 284],
+          ["Rewa", 56],
+          ["Katni", 118],
+          ["Prayagraj", 189],
+          ["kanpur", 261],
+          ["guna", 469]
+        ],
+        Rewa: [
+          ["Satna", 55],
+          ["Prayagraj", 133],
+          ["Varanasi", 223],
+          ["gaya", 450],
+          ["Ambikapur", 340],
+          ["Katni", 136]
+        ],
+        Katni: [
+          ["Jabalpur", 94],
+          ["Gwalior", 426],
+          ["Sagar", 185],
+          ["Satna", 117],
+          ["Rewa", 137],
+          ["Bilaspur", 350],
+          ["Korba", 371],
+          ["Ambikapur", 359],
+          ["Gaya", 587]
+        ],
+        Chhindwara: [
+          ["Indore", 410],
+          ["Bhopal", 274],
+          ["Jabalpur", 215],
+          ["Sagar", 259],
+          ["nagpur", 126],
+          ["Amravati", 213],
+          ["Bilaspur", 393],
+          ["Rajnandgaon", 322],
+          ["Durg", 338]
+        ],
+        guna: [
+          ["Bhopal", 211],
+          ["Dewas", 245],
+          ["Sagar", 212],
+          ["Kota", 202],
+          ["Gwalior", 218],
+          ["ujjain", 250],
+          ["Satna", 470]
+        ],
+        Mumbai: [
+          ["Thane", 22],
+          ["Navi Mumbai", 21],
+          ["surat", 290]
+        ],
+        Pune: [
+          ["Navi Mumbai", 130],
+          ["Aurangabad", 235],
+          ["Nashik", 216],
+          ["Solapur", 251],
+          ["Nizamabad", 563],
+          ["Sangli", 235],
+          ["Kolhapur", 235]
+        ],
+        Thane: [
+            ["Mumbai", 25],
+            ["Navi Mumbai", 28],
+            ["Nashik", 149],
+            ["surat", 267],
+            ["Aurangabad", 308],
+            ["Nizamabad", 766]
+          ],
+          "Navi Mumbai": [
+            ["Mumbai", 21],
+            ["Thane", 26],
+            ["pune", 127],
+            ["Kolhapur", 355]
+          ],
+          Nagpur: [
+            ["Chhindwara", 126],
+            ["Indore", 447],
+            ["Bhopal", 351],
+            ["Jabalpur", 274],
+            ["Amravati", 155],
+            ["Nizamabad", 352],
+            ["Chandrapur", 153],
+            ["Rajnandgaon", 212]
+          ],
+          Nashik: [
+            ["Aurangabad", 181],
+            ["pune", 213],
+            ["thane", 147],
+            ["surat", 215],
+            ["Solapur", 491]
+          ],
+          Aurangabad: [
+            ["Indore", 414],
+            ["Pune", 236],
+            ["thane", 306],
+            ["Nashik", 180],
+            ["Solapur", 308],
+            ["Nizamabad", 374],
+            ["Amravati", 318]
+          ],
+          Kolhapur: [
+            ["Belgaum", 114],
+            ["Sangli", 46],
+            ["Pune", 231]
+          ],
+          Amravati: [
+            ["Indore", 351],
+            ["Bhopal", 313],
+            ["Chhindwara", 212],
+            ["Nagpur", 153],
+            ["Aurangabad", 321],
+            ["Chandrapur", 260],
+            ["Nizamabad", 357],
+            ["Bharuch", 626],
+            ["Surat", 597]
+          ],
+          Solapur: [
+            ["Pune", 254],
+            ["Nashik", 381],
+            ["Aurangabad", 308],
+            ["Nizamabad", 317],
+            ["Nagpur", 700],
+            ["Amravati", 561],
+            ["Gulbarga", 125],
+            ["Sangli", 191],
+            ["Hubli-Dharwad", 296],
+            ["Belgaum", 310]
+          ],
+          Chandrapur: [
+            ["Ramagundam", 160],
+            ["Karimnagar", 223],
+            ["Nizamabad", 256],
+            ["Aurangabad", 519],
+            ["Amravati", 253],
+            ["Nagpur", 153],
+            ["Rajnandgaon", 290],
+            ["Dhamtari", 283],
+            ["Jagdalpur", 422]
+          ],
+          Sangli: [
+            ["Pune", 231],
+            ["Kolhapur", 47],
+            ["Solapur", 191],
+            ["Belgaum", 137],
+            ["Aurangabad", 498]
+          ],
+          Jaipur: [
+            ["Ajmer", 131],
+            ["Sikar", 115],
+            ["Alwar", 134],
+            ["Agra", 240],
+            ["Rohtak", 276],
+            ["Gurgaon", 272],
+            ["Gwalior", 335],
+            ["Kota", 252],
+            ["Bhilwara", 247]
+          ],
+          Udaipur: [
+            ["Jodhpur", 244],
+            ["Ajmer", 284],
+            ["Bhilwara", 153],
+            ["Kota", 283],
+            ["Ratlam", 238],
+            ["Ujjain", 333],
+            ["Vadodara", 329],
+            ["Gandhinagar", 238],
+            ["Rajkot", 473],
+            ["Jamnagar", 574]
+          ],
+          Jodhpur: [
+            ["Bikaner", 246],
+            ["Hanumangarh", 451],
+            ["Hisar", 467],
+            ["Rohtak", 523],
+            ["Sikar", 314],
+            ["Ajmer", 205],
+            ["Bhilwara", 249],
+            ["Kota", 377],
+            ["Udaipur", 243],
+            ["Gandhinagar", 432],
+            ["Rajkot", 653],
+            ["Jamnagar", 635]
+          ],
+          Kota: [
+            ["Bhilwara", 158],
+            ["Ajmer", 202],
+            ["Udaipur", 283],
+            ["Jodhpur", 378],
+            ["Jaipur", 253],
+            ["Sikar", 379],
+            ["Alwar", 352],
+            ["Agra", 419],
+            ["Gwalior", 336],
+            ["Sagar", 395],
+            ["Satna", 596],
+            ["Bhopal", 344],
+            ["Ujjain", 264],
+            ["Dewas", 301],
+            ["Ratlam", 267],
+            ["Gandhinagar", 518]
+          ],
+          Ajmer: [
+            ["Jodhpur", 205],
+            ["Bikaner", 266],
+            ["Sikar", 176],
+            ["Hanumangarh", 415],
+            ["Jaipur", 131],
+            ["Kota", 201],
+            ["Bhilwara", 135],
+            ["Udaipur", 265]
+          ],
+          Bikaner: [
+            ["Hanumangarh", 217],
+            ["Hisar", 304],
+            ["Rohtak", 365],
+            ["Gurgaon", 433],
+            ["Sikar", 220],
+            ["Jaipur", 344],
+            ["Ajmer", 265],
+            ["Jodhpur", 233],
+            ["Bhilwara", 412]
+          ],
+          Bhilwara: [
+            ["Jodhpur", 258],
+            ["Bikaner", 414],
+            ["Ajmer", 135],
+            ["Kota", 158],
+            ["Jaipur", 247],
+            ["Ratlam", 259],
+            ["Ujjain", 321],
+            ["Udaipur", 163]
+          ],
+          Alwar: [
+            ["Sikar", 190],
+            ["Hisar", 263],
+            ["Rohtak", 173],
+            ["Gurgaon", 146],
+            ["Aligarh", 217],
+            ["Agra", 167],
+            ["Gwalior", 253],
+            ["Jaipur", 173],
+            ["Kota", 334]
+          ],
+          Sikar: [
+            ["Jaipur", 122],
+            ["Jodhpur", 310],
+            ["Kota", 379],
+            ["Ajmer", 166],
+            ["Bikaner", 218],
+            ["Alwar", 194],
+            ["Hanumangarh", 282],
+            ["Hisar", 216],
+            ["Rohtak", 236],
+            ["Gurgaon", 273]
+          ],
+          Hanumangarh: [
+            ["Jodhpur", 433],
+            ["Ajmer", 415],
+            ["Bikaner", 231],
+            ["Bathinda", 99],
+            ["Hisar", 174],
+            ["Sikar", 281]
+          ],
+          Lucknow: [
+            ["Muzaffarpur", 517],
+            ["Patna", 502],
+            ["Varanasi", 313],
+            ["Prayagraj", 199],
+            ["Kanpur", 89],
+            ["Aligarh", 341],
+            ["Agra", 333],
+            ["Bareilly", 256]
+          ],
+          Kanpur: [
+            ["Lucknow", 89],
+            ["Prayagraj", 203],
+            ["Rewa", 290],
+            ["Satna", 262],
+            ["Gwalior", 265],
+            ["Sagar", 429],
+            ["Agra", 275],
+            ["Aligarh", 304],
+            ["Bareilly", 269]
+          ],
+          Agra: [
+            ["Aligarh", 89],
+            ["Bareilly", 216],
+            ["Kanpur", 277],
+            ["Lucknow", 336],
+            ["Gwalior", 120],
+            ["Kota", 400],
+            ["Jaipur", 239],
+            ["Alwar", 167],
+            ["Faridabad", 175]
+          ],
+          Varanasi: [
+            ["Lucknow", 312],
+            ["Prayagraj", 122],
+            ["Kanpur", 332],
+            ["Patna", 252],
+            ["Gaya", 247],
+            ["Ranchi", 426],
+            ["Dhanbad", 420],
+            ["Ambikapur", 300],
+            ["Rewa", 223]
+          ],
+          Prayagraj: [
+            ["Kanpur", 208],
+            ["Lucknow", 202],
+            ["Varanasi", 122],
+            ["Rewa", 133],
+            ["Satna", 188]
+          ],
+          Ghaziabad: [
+            ["Meerut", 51],
+            ["Sonipat", 75],
+            ["Moradabad", 140],
+            ["Aligarh", 130],
+            ["Noida", 21],
+            ["Rohtak", 121],
+            ["new delhi", 35]
+          ],
+          Noida: [
+            ["Ghaziabad", 27],
+            ["Gurgaon", 48],
+            ["Faridabad", 30],
+            ["Aligarh", 120],
+            ["new delhi", 26],
+            ["Agra", 201]
+          ],
+          Meerut: [
+            ["Saharanpur", 130],
+            ["Roorkee", 109],
+            ["Moradabad", 135],
+            ["Kashipur", 173],
+            ["Aligarh", 146],
+            ["Ghaziabad", 45],
+            ["Sonipat", 82],
+            ["Karnal", 109]
+          ],
+          Bareilly: [
+            ["Moradabad", 94],
+            ["Rudrapur", 78],
+            ["Lucknow", 248],
+            ["Kanpur", 270],
+            ["Gwalior", 334],
+            ["Agra", 223],
+            ["Aligarh", 169]
+          ],
+          Aligarh: [
+            ["Alwar", 199],
+            ["Lucknow", 342],
+            ["Kanpur", 305],
+            ["Agra", 89],
+            ["Ghaziabad", 124],
+            ["Noida", 121],
+            ["Meerut", 147],
+            ["Bareilly", 172],
+            ["Moradabad", 136]
+          ],
+          Moradabad: [
+            ["Ghaziabad", 140],
+            ["Meerut", 135],
+            ["Bareilly", 93],
+            ["Aligarh", 136],
+            ["Kashipur", 38],
+            ["Rudrapur", 74],
+            ["Ghaziabad", 140]
+          ],
+          Saharanpur: [
+            ["Meerut", 124],
+            ["Dehradun", 68],
+            ["Roorkee", 38],
+            ["Meerut", 124],
+            ["Karnal", 72],
+            ["Ambala", 98]
+          ],
+          Ahmedabad: [
+            ["Gandhinagar", 27],
+            ["Vadodara", 111],
+            ["Bharuch", 189],
+            ["Bhavnagar", 173],
+            ["Rajkot", 215],
+            ["Jamnagar", 305]
+          ],
+          Surat: [
+            ["Bharuch", 69],
+            ["Thane", 274],
+            ["Nashik", 214],
+            ["Aurangabad", 376],
+            ["Amravati", 596]
+          ],
+          Vadodara: [
+            ["Ahmedabad", 110],
+            ["Ratlam", 276],
+            ["Ujjain", 338],
+            ["indore", 335],
+            ["Amravati", 649],
+            ["Bharuch", 78],
+            ["Aurangabad", 462]
+          ],
+          Rajkot: [
+            ["Jamnagar", 90],
+            ["Junagadh", 103],
+            ["Bhavnagar", 174],
+            ["Ahmedabad", 214]
+          ],
+          Gandhinagar: [
+            ["Ahmedabad", 27],
+            ["Rajkot", 238],
+            ["Ratlam", 307],
+            ["Udaipur", 238],
+            ["Jodhpur", 430]
+          ],
+          Bhavnagar: [
+            ["Junagadh", 208],
+            ["Rajkot", 174],
+            ["Ahmedabad", 174],
+            ["Vadodara", 203]
+          ],
+          Jamnagar: [
+            ["Rajkot", 90],
+            ["Junagadh", 138],
+            ["Ahmedabad", 304],
+            ["Jodhpur", 646]
+          ],
+          Junagadh: [
+            ["Bhavnagar", 209],
+            ["Jamnagar", 139],
+            ["Rajkot", 104]
+          ],
+          Bharuch: [
+            ["Vadodara", 88],
+            ["Surat", 71],
+            ["Amravati", 642]
+          ],
+          Bangalore: [
+            ["Mangalore", 351],
+            ["Udupi", 402],
+            ["Shimoga", 304],
+            ["Davangere", 264],
+            ["Anantapur", 215],
+            ["Kadapa", 249],
+            ["Tirupati", 247],
+            ["Vellore", 190],
+            ["Mysore", 142],
+            ["Erode", 264],
+            ["Trichy", 325]
+          ],
+          Mysore: [
+            ["Mangalore", 255],
+            ["Udupi", 320],
+            ["Shimoga", 254],
+            ["Davangere", 301],
+            ["Anantapur", 371],
+            ["Bangalore", 158],
+            ["Erode", 212],
+            ["Coimbatore", 250],
+            ["Kozhikode", 213]
+          ],
+          "Hubli-Dharwad": [
+            ["Belgaum", 94],
+            ["Solapur", 296],
+            ["Gulbarga", 330],
+            ["Bellary", 215],
+            ["Kurnool", 363],
+            ["Davangere", 152],
+            ["Udupi", 321],
+            ["Shimoga", 199]
+          ],
+          Mangalore: [
+            ["Udupi", 55],
+            ["Shimoga", 193],
+            ["Bangalore", 394],
+            ["Mysore", 255],
+            ["Kozhikode", 239]
+          ],
+          Belgaum: [
+            ["Kolhapur", 113],
+            ["Sangli", 132],
+            ["Hubli-Dharwad", 94],
+            ["Solapur", 56],
+            ["Gulbarga", 346],
+            ["Kurnool", 465]
+          ],
+          Gulbarga: [
+            ["Hyderabad", 210],
+            ["Mahbubnagar", 152],
+            ["Kurnool", 272],
+            ["Bellary", 302],
+            ["Hubli-Dharwad", 330],
+            ["Belgaum", 346],
+            ["Sangli", 283],
+            ["Solapur", 124],
+            ["Nizamabad", 252]
+          ],
+          Davangere: [
+            ["Hubli-Dharwad", 152],
+            ["Bellary", 194],
+            ["Anantapur", 217],
+            ["Bangalore", 265],
+            ["Shimoga", 85],
+            ["Udupi", 219]
+          ],
+          Bellary: [
+            ["Hubli-Dharwad", 215],
+            ["Sangli", 396],
+            ["Gulbarga", 305],
+            ["Mahbubnagar", 269],
+            ["Kurnool", 149],
+            ["Anantapur", 100],
+            ["Kadapa", 266],
+            ["Davangere", 160]
+          ],
+          Udupi: [
+            ["Mangalore", 55],
+            ["Mysore", 306],
+            ["Bangalore", 402],
+            ["Shimoga", 148],
+            ["Hubli-Dharwad", 303]
+          ],
+          Shimoga: [
+            ["Hubli-Dharwad", 198],
+            ["Davangere", 92],
+            ["Bangalore", 307],
+            ["Anantapur", 262],
+            ["Mysore", 245],
+            ["Udupi", 146],
+            ["Mangalore", 193]
+          ],
+          Chennai: [
+            ["Nellore", 174],
+            ["Tirupati", 133],
+            ["Vellore", 137],
+            ["Trichy", 332],
+            ["Erode", 402]
+          ],
+          Coimbatore: [
+            ["Kozhikode", 179],
+            ["Mysore", 251],
+            ["Bangalore", 328],
+            ["Erode", 97],
+            ["Trichy", 217],
+            ["Dindigul", 152],
+            ["Thrissur", 113]
+          ],
+          Madurai: [
+            ["Dindigul", 64],
+            ["Trichy", 126],
+            ["Thoothukudi", 150],
+            ["Tirunelveli", 161],
+            ["Thiruvananthapuram", 317],
+            ["Kollam", 257],
+            ["Kochi", 265],
+            ["Thrissur", 268]
+          ],
+          Trichy: [
+            ["Chennai", 330],
+            ["Vellore", 272],
+            ["Erode", 146],
+            ["Bangalore", 325],
+            ["Coimbatore", 218],
+            ["Dindigul", 105],
+            ["Madurai", 131],
+            ["Thoothukudi", 280]
+          ],
+          Tirunelveli: [
+            ["Thoothukudi", 44],
+            ["Thiruvananthapuram", 156],
+            ["Kollam", 160],
+            ["Madurai", 160],
+            ["Dindigul", 209],
+            ["Kochi", 275]
+          ],
+          Vellore: [
+            ["Chennai", 138],
+            ["Tirupati", 108],
+            ["Bangalore", 188],
+            ["Kadapa", 201],
+            ["Anantapur", 299],
+            ["Erode", 292]
+          ],
+          Erode: [
+            ["Trichy", 148],
+            ["Dindigul", 130],
+            ["Coimbatore", 99],
+            ["Mysore", 213],
+            ["Bangalore", 234],
+            ["Vellore", 280],
+            ["Chennai", 404]
+          ],
+          Thoothukudi: [
+            ["Tirunelveli", 45],
+            ["Madurai", 151]
+          ],
+          Dindigul: [
+            ["Madurai", 63],
+            ["Tirunelveli", 209],
+            ["Kollam", 293],
+            ["Kochi", 263],
+            ["Thrissur", 212],
+            ["Coimbatore", 153],
+            ["Erode", 130],
+            ["Trichy", 99]
+          ],
+          Visakhapatnam: [
+            ["Berhampur", 274],
+            ["Jagdalpur", 281],
+            ["Rajahmundry", 191]
+          ],
+          Vijayawada: [
+            ["Rajahmundry", 159],
+            ["Khammam", 132],
+            ["Guntur", 15],
+            ["Hyderabad", 274],
+            ["Mahbubnagar", 332],
+            ["Jagdalpur", 433]
+          ],
+          Guntur: [
+            ["Vijayawada", 15],
+            ["Khammam", 163],
+            ["Hyderabad", 274],
+            ["Mahbubnagar", 310],
+            ["Kurnool", 297],
+            ["Kadapa", 337],
+            ["Nellore", 246],
+            ["Anantapur", 435]
+          ],
+          Tirupati: [
+            ["Nellore", 140],
+            ["Kadapa", 141],
+            ["Chennai", 152],
+            ["Vellore", 110],
+            ["Bangalore", 247]
+          ],
+          Nellore: [
+            ["Chennai", 175],
+            ["Erode", 513],
+            ["Guntur", 246],
+            ["Tirupati", 138],
+            ["Kurnool", 318],
+            ["Kadapa", 174]
+          ],
+          Kurnool: [
+            ["Kadapa", 199],
+            ["Anantapur", 147],
+            ["Bellary", 146],
+            ["Gulbarga", 272],
+            ["Mahbubnagar", 126],
+            ["Guntur", 299],
+            ["Khammam", 399]
+          ],
+          Kadapa: [
+            ["Nellore", 175],
+            ["Tirupati", 142],
+            ["Vellore", 203],
+            ["Bangalore", 248],
+            ["Anantapur", 167],
+            ["Kurnool", 199],
+            ["Bellary", 267],
+            ["Guntur", 348]
+          ],
+          Anantapur: [
+            ["Kadapa", 167],
+            ["Bangalore", 215],
+            ["Tirupati", 273],
+            ["Davangere", 219],
+            ["Bellary", 100],
+            ["Kurnool", 146]
+          ],
+          Rajahmundry: [
+            ["Visakhapatnam", 191],
+            ["Jagdalpur", 330],
+            ["Ramagundam", 403],
+            ["Warangal", 313],
+            ["Khammam", 205],
+            ["Vijayawada", 159]
+          ],
+          Hyderabad: [
+            ["Khammam", 196],
+            ["Vijayawada", 277],
+            ["Mahbubnagar", 103],
+            ["Gulbarga", 222],
+            ["Solapur", 301],
+            ["Nizamabad", 173],
+            ["Warangal", 147],
+            ["Karimnagar", 161]
+          ],
+          Warangal: [
+            ["Rajahmundry", 313],
+            ["Hyderabad", 149],
+            ["Jagdalpur", 404],
+            ["Khammam", 119],
+            ["Karimnagar", 77]
+          ],
+          Nizamabad: [
+            ["Chandrapur", 256],
+            ["Ramagundam", 172],
+            ["Karimnagar", 152],
+            ["Hyderabad", 173],
+            ["Gulbarga", 253],
+            ["Solapur", 315],
+            ["Aurangabad", 373],
+            ["Amravati", 349],
+            ["Nagpur", 351]
+          ],
+          Karimnagar: [
+            ["Ramagundam", 64],
+            ["Warangal", 77],
+            ["Hyderabad", 160],
+            ["Nizamabad", 151]
+          ],
+          Khammam: [
+            ["Rajahmundry", 205],
+            ["Vijayawada", 118],
+            ["Guntur", 152],
+            ["Kadapa", 98],
+            ["Kurnool", 397],
+            ["Mahbubnagar", 280],
+            ["Hyderabad", 195],
+            ["Warangal", 119],
+            ["Jagdalpur", 366]
+          ],
+          Ramagundam: [
+            ["Jagdalpur", 336],
+            ["Rajahmundry", 403],
+            ["Warangal", 116],
+            ["Karimnagar", 64],
+            ["Nizamabad", 173],
+            ["Chandrapur", 161]
+          ],
+          Mahbubnagar: [
+            ["Hyderabad", 99],
+            ["Vijayawada", 333],
+            ["Kurnool", 124],
+            ["Bellary", 269],
+            ["Gulbarga", 152]
+          ],
+          Chandigarh: [
+            ["Mohali", 92],
+            ["Solan", 175],
+            ["Dehradun", 252],
+            ["Ambala", 104],
+            ["Patiala", 57],
+            ["Ludhiana", 51],
+            ["Jalandhar", 113],
+            ["Mandi", 207]
+          ],
+          Ludhiana: [
+            ["Mohali", 92],
+            ["Chandigarh", 52],
+            ["Ambala", 110],
+            ["Patiala", 93],
+            ["Hisar", 217],
+            ["Bathinda", 139],
+            ["Jalandhar", 61]
+          ],
+          Amritsar: [
+            ["Pathankot", 113],
+            ["Dharamshala", 199],
+            ["Palampur", 226],
+            ["Jalandhar", 82],
+            ["Bathinda", 188]
+          ],
+          Jalandhar: [
+            ["Amritsar", 82],
+            ["Pathankot", 113],
+            ["Dharamshala", 161],
+            ["Palampur", 175],
+            ["Mandi", 201],
+            ["Shimla", 219],
+            ["Solan", 211],
+            ["Chandigarh", 112],
+            ["Ludhiana", 61],
+            ["Bathinda", 163]
+          ],
+          Patiala: [
+            ["Mohali", 64],
+            ["Ambala", 50],
+            ["Karnal", 130],
+            ["Rohtak", 191],
+            ["Hisar", 171],
+            ["Bathinda", 155],
+            ["Ludhiana", 92]
+          ],
+          Bathinda: [
+            ["Amritsar", 189],
+            ["Jalandhar", 163],
+            ["Ludhiana", 143],
+            ["Patiala", 155],
+            ["Karnal", 247],
+            ["Panipat", 261],
+            ["Hisar", 154],
+            ["Hanumangarh", 99]
+          ],
+          Mohali: [
+            ["Solan", 76],
+            ["Dehradun", 171],
+            ["Ambala", 44],
+            ["Patiala", 63],
+            ["Ludhiana", 91],
+            ["Jalandhar", 141],
+            ["Mandi", 157],
+            ["Chandigarh", 93]
+          ],
+          Pathankot: [
+            ["Chamba", 103],
+            ["Dharamshala", 84],
+            ["Jalandhar", 114],
+            ["Amritsar", 115]
+          ],
+          Faridabad: [
+            ["Ghaziabad", 44],
+            ["new delhi", 29],
+            ["Noida", 28],
+            ["Aligarh", 116],
+            ["Agra", 174],
+            ["Alwar", 147],
+            ["Jaipur", 272]
+          ],
+          Gurgaon: [
+            ["new delhi", 29],
+            ["Alwar", 141],
+            ["Sikar", 272],
+            ["Rohtak", 72],
+            ["Sonipat", 78]
+          ],
+          Panipat: [
+            ["Karnal", 34],
+            ["Saharanpur", 117],
+            ["Roorkee", 138],
+            ["Meerut", 112],
+            ["Sonipat", 51],
+            ["Rohtak", 76],
+            ["Hisar", 157],
+            ["Bathinda", 272],
+            ["Ambala", 117],
+            ["Mohali", 161],
+            ["Ludhiana", 225]
+          ],
+          Ambala: [
+            ["Saharanpur", 98],
+            ["Chandigarh", 104],
+            ["Ludhiana", 108],
+            ["Patiala", 49],
+            ["Mohali", 47],
+            ["Panipat", 117],
+            ["Dehradun", 149],
+            ["Karnal", 81],
+            ["Rohtak", 183],
+            ["Hisar", 207]
+          ],
+          Karnal: [
+            ["Patiala", 111],
+            ["Ambala", 81],
+            ["Saharanpur", 72],
+            ["Roorkee", 110],
+            ["Meerut", 109],
+            ["Panipat", 35],
+            ["Hisar", 154],
+            ["Bathinda", 249]
+          ],
+          Hisar: [
+            ["Patiala", 185],
+            ["Ambala", 207],
+            ["Karnal", 154],
+            ["Panipat", 156],
+            ["Sonipat", 155],
+            ["Rohtak", 101],
+            ["Sikar", 205],
+            ["Bikaner", 304],
+            ["Hanumangarh", 172],
+            ["Bathinda", 155]
+          ],
+          Rohtak: [
+            ["Jaipur", 274],
+            ["Jodhpur", 524],
+            ["Bikaner", 363],
+            ["Alwar", 173],
+            ["Sikar", 237],
+            ["Ghaziabad", 112],
+            ["Patiala", 195],
+            ["Gurgaon", 80],
+            ["Panipat", 75],
+            ["Ambala", 183],
+            ["Hisar", 101],
+            ["new delhi", 79],
+            ["Sonipat", 47]
+          ],
+          Sonipat: [
+            ["Ghaziabad", 69],
+            ["Meerut", 84],
+            ["Gurgaon", 80],
+            ["Panipat", 50],
+            ["Rohtak", 47],
+            ["Hisar", 159],
+            ["new delhi", 58]
+          ],
+          Patna: [
+            ["Muzaffarpur", 72],
+            ["Bhagalpur", 250],
+            ["Bihar Sharif", 78],
+            ["Gaya", 102],
+            ["Ambikapur", 412],
+            ["Varanasi", 255],
+            ["Lucknow", 507]
+          ],
+          Gaya: [
+            ["Patna", 102],
+            ["Bihar Sharif", 83],
+            ["Deoghar", 213],
+            ["Dhanbad", 219],
+            ["Bokaro", 188],
+            ["Ranchi", 225],
+            ["Ambikapur", 332],
+            ["Varanasi", 249]
+          ],
+          Bhagalpur: [
+            ["Purnia", 87],
+            ["Malda", 151],
+            ["Bardhaman", 271],
+            ["Deoghar", 115],
+            ["Darbhanga", 198],
+            ["Siliguri", 258]
+          ],
+          Muzaffarpur: [
+            ["Darbhanga", 62],
+            ["Bhagalpur", 241],
+            ["Patna", 71],
+            ["Varanasi", 319],
+            ["Lucknow", 516]
+          ],
+          Darbhanga: [
+            ["Purnia", 231],
+            ["Bhagalpur", 199],
+            ["Muzaffarpur", 61]
+          ],
+          Purnia: [
+            ["Siliguri", 170],
+            ["Malda", 133],
+            ["Bardhaman", 351],
+            ["Durgapur", 329],
+            ["Bhagalpur", 87],
+            ["Patna", 299],
+            ["Darbhanga", 231],
+            ["Bihar Sharif", 262]
+          ],
+          "Bihar Sharif": [
+            ["Patna", 79],
+            ["Gaya", 78],
+            ["Purnia", 262],
+            ["Bhagalpur", 211],
+            ["Deoghar", 170],
+            ["Dhanbad", 250],
+            ["Varanasi", 305]
+          ],
+          Bhubaneswar: [
+            ["Cuttack", 26],
+            ["Puri", 62],
+            ["Berhampur", 173],
+            ["Dhamtari", 590]
+          ],
+          Cuttack: [
+            ["Bhubaneswar", 25],
+            ["Puri", 81],
+            ["Sambalpur", 261],
+            ["Rourkela", 306],
+            ["Jamshedpur", 326],
+            ["Kharagpur", 299],
+            ["Haldia", 358]
+          ],
+          Rourkela: [
+            ["Ranchi", 167],
+            ["Jamshedpur", 199],
+            ["Kharagpur", 327],
+            ["Cuttack", 300],
+            ["Sambalpur", 174],
+            ["Raigarh", 189],
+            ["Korba", 281],
+            ["Ambikapur", 280],
+            ["Gaya", 364],
+            ["Varanasi", 555]
+          ],
+          Berhampur: [
+            ["Puri", 178],
+            ["Bhubaneswar", 172],
+            ["Rourkela", 475],
+            ["Sambalpur", 325],
+            ["Visakhapatnam", 278],
+            ["Jagdalpur", 8],
+            ["Dhamtari", 509],
+            ["Raipur", 518]
+          ],
+          Sambalpur: [
+            ["Cuttack", 262],
+            ["Berhampur", 325],
+            ["Jagdalpur", 321],
+            ["Raipur", 371],
+            ["Bilaspur", 252],
+            ["Korba", 235],
+            ["Raigarh", 129]
+          ],
+          Puri: [
+            ["Bhubaneswar", 61],
+            ["Berhampur", 174]
+          ],
+          Ranchi: [
+            ["Bokaro", 102],
+            ["Jamshedpur", 126],
+            ["Cuttack", 447],
+            ["Rourkela", 168],
+            ["Raigarh", 324],
+            ["Ambikapur", 287],
+            ["Korba", 350],
+            ["Rewa", 555],
+            ["Varanasi", 427],
+            ["Gaya", 210]
+          ],
+          Jamshedpur: [
+            ["Bokaro", 171],
+            ["Dhanbad", 140],
+            ["Asansol", 166],
+            ["Durgapur", 172],
+            ["Bardhaman", 228],
+            ["Howrah", 267],
+            ["Kolkata", 282],
+            ["Kharagpur", 155],
+            ["Cuttack", 366],
+            ["Rourkela", 201],
+            ["Ranchi", 126]
+          ],
+          Dhanbad: [
+            ["Deoghar", 114],
+            ["Asansol", 63],
+            ["Jamshedpur", 140],
+            ["Bokaro", 71],
+            ["Gaya", 218],
+            ["Bihar Sharif", 252]
+          ],
+          Bokaro: [
+            ["Dhanbad", 71],
+            ["Kharagpur", 275],
+            ["Jamshedpur", 173],
+            ["Ranchi", 103],
+            ["Gaya", 187],
+            ["Varanasi", 388]
+          ],
+          Deoghar: [
+            ["Bhagalpur", 116],
+            ["Malda", 211],
+            ["Asansol", 115],
+            ["Dhanbad", 122],
+            ["Gaya", 215],
+            ["Bihar Sharif", 172],
+            ["Muzaffarpur", 262],
+            ["Darbhanga", 260]
+          ],
+          Thiruvananthapuram: [
+            ["Tirunelveli", 155],
+            ["Kollam", 64],
+            ["Madurai", 264]
+          ],
+          Kochi: [
+            ["Kollam", 141],
+            ["Tirunelveli", 268],
+            ["Madurai", 266],
+            ["Dindigul", 264],
+            ["Thrissur", 84]
+          ],
+          Kozhikode: [
+            ["Thrissur", 117],
+            ["Coimbatore", 232],
+            ["Erode", 325],
+            ["Mysore", 244],
+            ["Mangalore", 234]
+          ],
+          Thrissur: [
+            ["Kochi", 84],
+            ["Dindigul", 225],
+            ["Coimbatore", 113],
+            ["Mysore", 261],
+            ["Kozhikode", 123]
+          ],
+          Kollam: [
+            ["Thiruvananthapuram", 64],
+            ["Tirunelveli", 160],
+            ["Madurai", 256],
+            ["Dindigul", 295],
+            ["Kochi", 140]
+          ],
+          Kolkata: [
+            ["Howrah", 16],
+            ["Haldia", 117],
+            ["Bardhaman", 104],
+            ["Malda", 327]
+          ],
+          Howrah: [
+            ["Kolkata", 16],
+            ["Bardhaman", 99],
+            ["Bokaro", 355],
+            ["Jamshedpur", 269],
+            ["Kharagpur", 116],
+            ["Haldia", 108]
+          ],
+          Durgapur: [
+            ["Bardhaman", 70],
+            ["Kharagpur", 151],
+            ["Jamshedpur", 173],
+            ["Asansol", 41],
+            ["Malda", 254]
+          ],
+          Asansol: [
+            ["Durgapur", 41],
+            ["Kharagpur", 188],
+            ["Jamshedpur", 167],
+            ["Dhanbad", 63],
+            ["Deoghar", 115]
+          ],
+          Siliguri: [
+            ["Darjeeling", 62],
+            ["Darbhanga", 323],
+            ["Purnia", 171],
+            ["Malda", 232]
+          ],
+          Bardhaman: [
+            ["Howrah", 98],
+            ["Kolkata", 105],
+            ["Haldia", 174],
+            ["Kharagpur", 128],
+            ["Jamshedpur", 222],
+            ["Durgapur", 70],
+            ["Deoghar", 222],
+            ["Malda", 226],
+            ["Bhagalpur", 271],
+            ["Purnia", 368]
+          ],
+          Malda: [
+            ["Siliguri", 232],
+            ["Purnia", 133],
+            ["Bhagalpur", 155],
+            ["Deoghar", 211],
+            ["Bardhaman", 226],
+            ["Durgapur", 252],
+            ["Asansol", 240],
+            ["Dhanbad", 274]
+          ],
+          Kharagpur: [
+            ["Haldia", 103],
+            ["Howrah", 115],
+            ["Kolkata", 128],
+            ["Bardhaman", 128],
+            ["Durgapur", 151],
+            ["Asansol", 188],
+            ["Dhanbad", 242],
+            ["Bokaro", 276],
+            ["Jamshedpur", 154],
+            ["Rourkela", 328],
+            ["Cuttack", 300]
+          ],
+          Haldia: [
+            ["Kolkata", 122],
+            ["Howrah", 102],
+            ["Kharagpur", 103],
+            ["Bardhaman", 176],
+            ["Cuttack", 361]
+          ],
+          Darjeeling: [
+            ["Siliguri", 62]
+          ],
+          Shimla: [
+            ["Mandi", 133],
+            ["Kullu", 198],
+            ["Jalandhar", 241],
+            ["Dharamshala", 227],
+            ["Ludhiana", 206],
+            ["Solan", 42],
+            ["Chandigarh", 211]
+          ],
+          Mandi: [
+            ["Kullu", 70],
+            ["Palampur", 92],
+            ["Amritsar", 278],
+            ["Jalandhar", 218],
+            ["Ludhiana", 192],
+            ["Shimla", 134]
+          ],
+          Solan: [
+            ["Shimla", 42],
+            ["Jalandhar", 208],
+            ["Ludhiana", 163],
+            ["Chandigarh", 168],
+            ["Ambala", 96],
+            ["Dehradun", 177],
+            ["Saharanpur", 185]
+          ],
+          Dharamshala: [
+            ["Chamba", 127],
+            ["Palampur", 39],
+            ["Pathankot", 84],
+            ["Jalandhar", 161]
+          ],
+          Kullu: [
+            ["Manali", 40],
+            ["Mandi", 73],
+            ["Shimla", 200]
+          ],
+          Manali: [
+            ["Kullu", 40]
+          ],
+          Palampur: [
+            ["Dharamshala", 33],
+            ["Mandi", 92],
+            ["Jalandhar", 176]
+          ],
+          Chamba: [
+            ["Pathankot", 116],
+            ["Dharamshala", 127]
+          ],
+          Bilaspur: [
+            ["Ambikapur", 220],
+            ["Korba", 88],
+            ["Raigarh", 147],
+            ["Sambalpur", 252],
+            ["Raipur", 116],
+            ["Jabalpur", 313],
+            ["Katni", 365]
+          ],
+          Raipur: [
+            ["Bilaspur", 116],
+            ["Raigarh", 247],
+            ["Sambalpur", 271],
+            ["Berhampur", 538],
+            ["Visakhapatnam", 573],
+            ["Dhamtari", 63],
+            ["Bhilai", 32],
+            ["Jabalpur", 341]
+          ],
+          Bhilai: [
+            ["Durg", 8],
+            ["Raipur", 33]
+          ],
+          Durg: [
+            ["Bhilai", 9],
+            ["Dhamtari", 69],
+            ["Rajnandgaon", 30],
+            ["Jabalpur", 334]
+          ],
+          Jagdalpur: [
+            ["Bhubaneswar", 175],
+            ["Berhampur", 5],
+            ["Visakhapatnam", 285],
+            ["Rajahmundry", 461],
+            ["Vijayawada", 614],
+            ["Khammam", 660],
+            ["Warangal", 768],
+            ["Ramagundam", 753],
+            ["Chandrapur", 805],
+            ["Dhamtari", 511],
+            ["Sambalpur", 321]
+          ],
+          Korba: [
+            ["Ambikapur", 174],
+            ["Rourkela", 281],
+            ["Raigarh", 108],
+            ["Bilaspur", 88],
+            ["Jabalpur", 413],
+            ["Katni", 374]
+          ],
+          Rajnandgaon: [
+            ["Durg", 30],
+            ["Dhamtari", 79],
+            ["Jagdalpur", 592],
+            ["Ramagundam", 412],
+            ["Chandrapur", 290],
+            ["Nagpur", 214],
+            ["Chhindwara", 327],
+            ["Jabalpur", 326]
+          ],
+          Raigarh: [
+            ["Korba", 110],
+            ["Bilaspur", 147],
+            ["Ranchi", 324],
+            ["Ambikapur", 196],
+            ["Rourkela", 189],
+            ["Sambalpur", 129],
+            ["Cuttack", 388],
+            ["Raipur", 247],
+            ["Dhamtari", 297],
+            ["Jagdalpur", 454]
+          ],
+          Ambikapur: [
+            ["Ranchi", 289],
+            ["Rourkela", 279],
+            ["Raigarh", 197],
+            ["Korba", 173],
+            ["Bilaspur", 220],
+            ["Jabalpur", 415],
+            ["Katni", 360],
+            ["Rewa", 341],
+            ["Varanasi", 300],
+            ["Patna", 413],
+            ["Gaya", 346]
+          ],
+          Dhamtari: [
+            ["Rajnandgaon", 79],
+            ["Durg", 69],
+            ["Raipur", 63],
+            ["Bilaspur", 188],
+            ["Raigarh", 294],
+            ["Sambalpur", 321],
+            ["Cuttack", 580],
+            ["Berhampur", 511],
+            ["Jagdalpur", 513],
+            ["Ramagundam", 404],
+            ["Chandrapur", 283]
+          ],
+          Dehradun: [
+            ["Rishikesh", 38],
+            ["Haridwar", 50],
+            ["Roorkee", 71],
+            ["Saharanpur", 69],
+            ["Ambala", 152],
+            ["Chandigarh", 253],
+            ["Solan", 180],
+            ["Shimla", 223]
+          ],
+          Haridwar: [
+            ["Dehradun", 52],
+            ["Rishikesh", 25],
+            ["Almora", 292],
+            ["Kashipur", 195],
+            ["Moradabad", 160],
+            ["Meerut", 139],
+            ["Roorkee", 31]
+          ],
+          Rishikesh: [
+            ["Dehradun", 39],
+            ["Haridwar", 24],
+            ["Almora", 320],
+            ["Nainital", 247]
+          ],
+          Haldwani: [
+            ["Nainital", 43],
+            ["Almora", 90],
+            ["Pithoragarh", 187],
+            ["Rudrapur", 32]
+          ],
+          Roorkee: [
+            ["Haridwar", 35],
+            ["Dehradun", 69],
+            ["Saharanpur", 38],
+            ["Sonipat", 158],
+            ["Panipat", 138],
+            ["Meerut", 104],
+            ["Moradabad", 154],
+            ["Kashipur", 195]
+          ],
+          Kashipur: [
+            ["Nainital", 97],
+            ["Haldwani", 73],
+            ["Rudrapur", 45],
+            ["Moradabad", 38],
+            ["Meerut", 174],
+            ["Roorkee", 200],
+            ["Haridwar", 199]
+          ],
+          Rudrapur: [
+            ["Haldwani", 32],
+            ["Kashipur", 47],
+            ["Moradabad", 75],
+            ["Bareilly", 77],
+            ["Lucknow", 331]
+          ],
+          Nainital: [
+            ["Almora", 64],
+            ["Pithoragarh", 178],
+            ["Haldwani", 43],
+            ["Kashipur", 97]
+          ],
+          Almora: [
+            ["Pithoragarh", 115],
+            ["Nainital", 64],
+            ["Haldwani", 89],
+            ["Rishikesh", 318]
+          ],
+          Pithoragarh: [
+            ["Almora", 115],
+            ["Nainital", 175],
+            ["Haldwani", 186],
+            ["Bareilly", 257]
+          ]
+
+
+        
+        // Add all other cities...
+      };
+
+      // Create a normalized version of the graph (case-insensitive)
+      function createNormalizedGraph(originalGraph) {
+        const normalizedGraph = {};
+        const caseMap = {}; // Maps lowercase to original case
+
+        // First build case mapping
+        for (const city in originalGraph) {
+          const lowerCity = city.toLowerCase();
+          if (!caseMap[lowerCity]) {
+            caseMap[lowerCity] = city; // Store first occurrence as canonical version
+          }
+        }
+
+        // Then build normalized graph
+        for (const city in originalGraph) {
+          const lowerCity = city.toLowerCase();
+          const canonicalCity = caseMap[lowerCity];
+
+          if (!normalizedGraph[canonicalCity]) {
+            normalizedGraph[canonicalCity] = [];
+          }
+
+          for (const [neighbor, distance] of originalGraph[city]) {
+            const lowerNeighbor = neighbor.toLowerCase();
+            const canonicalNeighbor = caseMap[lowerNeighbor] || neighbor;
+
+            // Avoid duplicate connections
+            if (
+              !normalizedGraph[canonicalCity].some(
+                ([n]) => n.toLowerCase() === lowerNeighbor
+              )
+            ) {
+              normalizedGraph[canonicalCity].push([
+                canonicalNeighbor,
+                distance,
+              ]);
+            }
+          }
+        }
+
+        return { normalizedGraph, caseMap };
+      }
+
+      // Make the graph bidirectional (using normalized graph)
+      function makeBidirectional(normalizedGraph) {
+        const newGraph = JSON.parse(JSON.stringify(normalizedGraph));
+        for (const [city, connections] of Object.entries(normalizedGraph)) {
+          for (const [neighbor, distance] of connections) {
+            if (!newGraph[neighbor]) {
+              newGraph[neighbor] = [];
+            }
+            if (
+              !newGraph[neighbor].some(
+                ([c]) => c.toLowerCase() === city.toLowerCase()
+              )
+            ) {
+              newGraph[neighbor].push([city, distance]);
+            }
+          }
+        }
+        return newGraph;
+      }
+
+      // Dijkstra's algorithm to find shortest path (case-insensitive)
+      function dijkstra(graph, start, end, blockedEdges = []) {
+        const distances = {};
+        const previous = {};
+        const queue = new PriorityQueue();
+
+        // Initialize distances
+        for (const city in graph) {
+          distances[city] = Infinity;
+          previous[city] = null;
+        }
+        distances[start] = 0;
+        queue.enqueue(start, 0);
+
+        while (!queue.isEmpty()) {
+          const current = queue.dequeue().element;
+
+          if (current.toLowerCase() === end.toLowerCase()) break;
+
+          for (const [neighbor, distance] of graph[current] || []) {
+            // Skip blocked edges (case-insensitive)
+            const isBlocked = blockedEdges.some(
+              ([from, to]) =>
+                from.toLowerCase() === current.toLowerCase() &&
+                to.toLowerCase() === neighbor.toLowerCase()
+            );
+            if (isBlocked) continue;
+
+            const alt = distances[current] + distance;
+            if (alt < distances[neighbor]) {
+              distances[neighbor] = alt;
+              previous[neighbor] = current;
+              queue.enqueue(neighbor, alt);
+            }
+          }
+        }
+
+        // Reconstruct path
+        const path = [];
+        const distancesBetween = [];
+        let current = end;
+
+        // Find the correctly cased end city if needed
+        if (!previous[current]) {
+          for (const city in previous) {
+            if (city.toLowerCase() === end.toLowerCase() && previous[city]) {
+              current = city;
+              break;
+            }
+          }
+        }
+
+        while (
+          current &&
+          current.toLowerCase() !== start.toLowerCase() &&
+          previous[current]
+        ) {
+          const prev = previous[current];
+          const edge = graph[prev].find(
+            ([city]) => city.toLowerCase() === current.toLowerCase()
+          );
+          if (!edge) break;
+
+          distancesBetween.unshift(edge[1]);
+          path.unshift(current);
+          current = prev;
+        }
+
+        if (!current || current.toLowerCase() !== start.toLowerCase())
+          return null;
+
+        path.unshift(current);
+        return {
+          path,
+          distances: distancesBetween,
+          totalDistance: distances[end] || distances[path[path.length - 1]],
+        };
+      }
+
+      // Yen's algorithm to find top k shortest paths with improvements
+      function findTopKShortestPaths(graph, start, end, k = 5) {
+        const A = []; // Stores k-shortest paths
+        const B = []; // Stores potential k-shortest paths
+
+        // Find canonical case for start and end
+        const startLower = start.toLowerCase();
+        const endLower = end.toLowerCase();
+        let canonicalStart = start;
+        let canonicalEnd = end;
+
+        for (const city in graph) {
+          if (city.toLowerCase() === startLower) canonicalStart = city;
+          if (city.toLowerCase() === endLower) canonicalEnd = city;
+        }
+
+        // 1. Find the shortest path
+        const shortestPath = dijkstra(graph, canonicalStart, canonicalEnd);
+        if (!shortestPath) return [];
+        A.push(shortestPath);
+
+        // Get the minimum distance threshold (2x shortest path distance)
+        const minDistanceThreshold = 2 * shortestPath.totalDistance;
+
+        for (let i = 1; i < k; i++) {
+          const prevPath = A[i - 1];
+
+          for (let j = 0; j < prevPath.path.length - 1; j++) {
+            const spurNode = prevPath.path[j];
+            const rootPath = prevPath.path.slice(0, j + 1);
+            const rootDistances = prevPath.distances.slice(0, j);
+
+            // Block edges used by previous paths with same root
+            const blockedEdges = [];
+            for (const path of A) {
+              if (
+                path.path.slice(0, j).join().toLowerCase() ===
+                rootPath.slice(0, j).join().toLowerCase()
+              ) {
+                blockedEdges.push([path.path[j], path.path[j + 1]]);
+              }
+            }
+
+            // Also block edges that would create loops
+            if (rootPath.length > 1) {
+              for (let k = 0; k < rootPath.length - 1; k++) {
+                blockedEdges.push([rootPath[k + 1], rootPath[k]]);
+              }
+            }
+
+            // Find spur path
+            const spurPath = dijkstra(
+              graph,
+              spurNode,
+              canonicalEnd,
+              blockedEdges
+            );
+
+            if (spurPath) {
+              // Combine root and spur paths
+              const totalPath = [...rootPath.slice(0, -1), ...spurPath.path];
+              const totalDistances = [...rootDistances, ...spurPath.distances];
+              const totalDistance =
+                rootDistances.reduce((a, b) => a + b, 0) +
+                spurPath.distances.reduce((a, b) => a + b, 0);
+
+              // Skip if path exceeds 2x the shortest distance
+              if (totalDistance > minDistanceThreshold) continue;
+
+              // Check for duplicates and loops (case-insensitive)
+              const isDuplicate = A.concat(B).some(
+                (p) =>
+                  p.path.join().toLowerCase() === totalPath.join().toLowerCase()
+              );
+
+              const hasLoop =
+                new Set(totalPath.map((c) => c.toLowerCase())).size !==
+                totalPath.length;
+
+              if (!isDuplicate && !hasLoop) {
+                B.push({
+                  path: totalPath,
+                  distances: totalDistances,
+                  totalDistance,
+                });
+              }
+            }
+          }
+
+          if (B.length === 0) break; // No more paths
+
+          // Sort B and add the shortest to A
+          B.sort((a, b) => a.totalDistance - b.totalDistance);
+          A.push(B.shift());
+        }
+
+        return A;
+      }
+
+      // Priority Queue implementation for Dijkstra
+      class PriorityQueue {
+        constructor() {
+          this.items = [];
+        }
+
+        enqueue(element, priority) {
+          const qElement = { element, priority };
+          let added = false;
+
+          for (let i = 0; i < this.items.length; i++) {
+            if (qElement.priority < this.items[i].priority) {
+              this.items.splice(i, 0, qElement);
+              added = true;
+              break;
+            }
+          }
+
+          if (!added) {
+            this.items.push(qElement);
+          }
+        }
+
+        dequeue() {
+          return this.items.shift();
+        }
+
+        isEmpty() {
+          return this.items.length === 0;
+        }
+      }
+      // finding path dunction
+      async function findPaths() {
+        const city1 = document.getElementById("city1").value;
+        const city2 = document.getElementById("city2").value;
+        const resultsDiv = document.getElementById("results");
+        const speed = parseFloat(document.getElementById("speed").value);
+
+        // Clear previous results
+        resultsDiv.innerHTML = "<p>Finding paths...</p>";
+
+        if (!city1 || !city2) {
+          resultsDiv.innerHTML = "<p>Please enter both cities</p>";
+          return;
+        }
+
+        if (!speed || speed <= 0) {
+          resultsDiv.innerHTML = "<p>Please enter a valid speed</p>";
+          return;
+        }
+
+        // Create normalized graph
+        const { normalizedGraph, caseMap } =
+          createNormalizedGraph(cityDistances);
+        const bidirectionalGraph = makeBidirectional(normalizedGraph);
+
+        // Check if cities exist (case-insensitive)
+        const city1Lower = city1.toLowerCase();
+        const city2Lower = city2.toLowerCase();
+        const city1Exists = Object.keys(bidirectionalGraph).some(
+          (c) => c.toLowerCase() === city1Lower
+        );
+        const city2Exists = Object.keys(bidirectionalGraph).some(
+          (c) => c.toLowerCase() === city2Lower
+        );
+
+        if (!city1Exists || !city2Exists) {
+          resultsDiv.innerHTML =
+            "<p>One or both cities not found in our database</p>";
+          return;
+        }
+
+        // Find paths
+        paths = findTopKShortestPaths(bidirectionalGraph, city1, city2, 5);
+
+        if (paths.length === 0) {
+          resultsDiv.innerHTML = "<p>No paths found between these cities</p>";
+          return;
+        }
+
+        // Get weather for all unique cities in all paths
+        const allCities = [...new Set(paths.flatMap((p) => p.path))];
+        const weatherData = {};
+
+        try {
+          for (const city of allCities) {
+            weatherData[city] = await getCityWeather(city);
+          }
+        } catch (error) {
+          console.error("Failed to fetch weather:", error);
+          // Continue showing paths even if weather fails
+        }
+
+        // Display results with weather
+        let html = "<h2>Top Shortest Paths</h2>";
+        html += `<p>Showing ${paths.length} paths (maximum distance: ${
+          2 * paths[0].totalDistance
+        } km)</p>`;
+
+        for (const [index, pathObj] of paths.entries()) {
+          html += `<h3>Path ${index + 1} (Total Distance: ${
+            pathObj.totalDistance
+          } km)</h3>`;
+          html += `<table border="1">`;
+          html += `<tr><th>From</th><th>To</th><th>Distance</th><th>Weather</th></tr>`;
+
+          for (let i = 0; i < pathObj.path.length - 1; i++) {
+            const fromCity = pathObj.path[i];
+            const toCity = pathObj.path[i + 1];
+            const fromWeather = weatherData[fromCity];
+            const toWeather = weatherData[toCity];
+
+            html += `<tr>`;
+            html += `<td>${fromCity}</td>`;
+            html += `<td>${toCity}</td>`;
+            html += `<td>${pathObj.distances[i]} km</td>`;
+            html += `<td>${getWeatherDisplay(
+              fromWeather
+            )} → ${getWeatherDisplay(toWeather)}</td>`;
+            html += `</tr>`;
+          }
+
+          html += `</table>`;
+
+          // ✅ Add button just below the table:
+          html += `<button onclick="openPathDetails(${index})">View Full Path</button>`;
+        }
+
+        resultsDiv.innerHTML = html;
+      }
+
+      // Helper function to format weather display
+      function getWeatherDisplay(weather) {
+        if (!weather) return "❓ N/A";
+        const icon = weatherIcons[weather.icon] || "🌐";
+        return `${icon} ${weather.temp}°C ${weather.description}`;
+      }
+
+      // Populate datalist with city names (case-insensitive unique)
+      function populateCityList() {
+        const datalist = document.getElementById("cities");
+        const seen = new Set();
+
+        for (const city in cityDistances) {
+          const lowerCity = city.toLowerCase();
+          if (!seen.has(lowerCity)) {
+            seen.add(lowerCity);
+            const option = document.createElement("option");
+            option.value = city;
+            datalist.appendChild(option);
+          }
+        }
+      }
+
+      // Add this NEW function (explanation below)
+      async function getCityWeather(cityName) {
+        try {
+          const response = await fetch(
+            `https://api.openweathermap.org/data/2.5/weather?q=${cityName}&units=metric&appid=${WEATHER_API_KEY}`
+          );
+          const data = await response.json();
+          return {
+            temp: Math.round(data.main.temp),
+            icon: data.weather[0].icon, // Gets icon code like "04d"
+            description: data.weather[0].main, // "Clouds", "Rain" etc.
+          };
+        } catch (error) {
+          console.error("Weather fetch failed:", error);
+          return null; // We'll handle errors gracefully
+        }
+      }
+
+      function openPathDetails(index) {
+        const selectedPath = paths[index];
+        // Save both path and weather info in localStorage
+
+        const velocityInput = document.getElementById("speed"); // 👈 velocity input field
+        const velocity = velocityInput ? parseFloat(velocityInput.value) : null;
+
+
+        const fullPathData = {
+          path: selectedPath.path,
+          distances: selectedPath.distances,
+          totalDistance: selectedPath.totalDistance,
+          weatherData: weatherData,
+          velocity: velocity 
+          
+        };
+       
+        localStorage.setItem("selectedPath", JSON.stringify(fullPathData));
+        window.open("path-details.html", "_blank");
+      }
+
+      // Initialize when page loads
+      window.onload = function () {
+        populateCityList();
+      };
+    </script>
+  </body>
+</html>
